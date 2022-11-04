@@ -42,6 +42,28 @@ class PathFactoryParams:
         return cls(**params)
 
 
+class SimulationPath:
+    def __init__(self, params: PathFactoryParams, path: List[SpotPriceType]) -> None:
+        self._base_path: List[SpotPriceType] = path
+        self.expiry: float = params.expiry
+        self.rate: float = params.rate
+        self.vol: float = params.vol
+        self.base_spot_price: float = params.spot_price
+        self.act_spot_price: float = path[0][1]
+        self.num_steps: int = params.num_steps
+        assert (
+            len(self._base_path) == self.num_steps + 1,
+            "Path should have same number of steps as the param that generated it",
+        )
+
+    def get_timed_path(self) -> List[Tuple[float, float]]:
+        timed_path = []
+        for num_steps, price in self._base_path:
+            time = num_steps * self.expiry / self.num_steps
+            timed_path.append((time, price))
+        return timed_path
+
+
 class PriceSimulator:
     def __init__(self, params: PathFactoryParams) -> None:
         self.params = params
@@ -117,7 +139,8 @@ class PathFactory:
         all_paths: List[Sequence[SpotPriceType]] = []
         for path_num in range(params.num_paths):
             filepath: str = cls._filepath(folder_path, path_num)
-            all_paths.append(PriceSimulator.read_path(filepath))
+            path = SimulationPath(params, PriceSimulator.read_path(filepath))
+            all_paths.append(path)
 
         path_factory = PathFactory(params)
         path_factory.paths = all_paths
