@@ -55,7 +55,7 @@ class AlgoWrapper:
             pickle.dump(self, fp)
 
     @classmethod
-    def load_model(cls, filepath) -> OptimizerAlgoWrapper:
+    def load_model(cls, filepath) -> AlgoWrapper:
         with open(filepath, "rb") as fp:
             obj = pickle.load(fp)
         return obj
