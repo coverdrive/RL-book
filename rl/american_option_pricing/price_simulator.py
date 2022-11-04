@@ -66,10 +66,12 @@ class PriceSimulator:
 
     @classmethod
     def read_path(self, filepath) -> Sequence[SpotPriceType]:
+        path = []
         with open(filepath, "r") as fp:
             for line in fp:
                 step, price = line.strip().split(",")
-                yield ((int(step), float(price)))
+                path.append(((int(step), float(price))))
+        return path
 
     def write_path(self, filepath) -> None:
         with open(filepath, "w") as fp:
@@ -85,11 +87,11 @@ class PathFactory:
         self.paths: List[Sequence[SpotPriceType]] = paths
 
     @classmethod
-    def filepath(cls, folder_path: str, path_num: int) -> str:
+    def _filepath(cls, folder_path: str, path_num: int) -> str:
         return f"{folder_path}/path_{path_num}.txt"
 
     @classmethod
-    def config_path(cls, folder_path: str) -> str:
+    def _config_path(cls, folder_path: str) -> str:
         return f"{folder_path}/params.json"
 
     def to_folder(self, folder_path: str, overwrite=False) -> None:
@@ -103,18 +105,18 @@ class PathFactory:
 
         price_sim = PriceSimulator(self.params)
         for path_num in range(self.params.num_paths):
-            filepath: str = self.filepath(folder_path, path_num)
+            filepath: str = self._filepath(folder_path, path_num)
             price_sim.write_path(filepath)
 
-        self.params.to_file(self.config_path(folder_path))
+        self.params.to_file(self._config_path(folder_path))
         print(f"{self.params.num_paths} paths written to {folder_path}")
 
     @classmethod
     def from_folder(cls, folder_path: str) -> PathFactory:
-        params = PathFactoryParams.from_file(cls.config_path(folder_path))
+        params = PathFactoryParams.from_file(cls._config_path(folder_path))
         all_paths: List[Sequence[SpotPriceType]] = []
         for path_num in range(params.num_paths):
-            filepath: str = cls.filepath(folder_path, path_num)
+            filepath: str = cls._filepath(folder_path, path_num)
             all_paths.append(PriceSimulator.read_path(filepath))
 
         path_factory = PathFactory(params)
