@@ -13,7 +13,6 @@ The American Options Pricing are different strategies we use to maximize the pro
         - `--rate`: Risk Free Rate. Default: 0.05.
         - `--vol`: Volatility. Default: 0.25.
         - `--spot_price`: Spot Price at T=0. Default: 100.0.
-        - `--num_steps`: Number of Timesteps to Simulate to Expiry. Default: 100.
         - `--num_paths`: Number of Simulation Paths to Run. Default: 100.
         - `--spot_price_frac`: Variation of Spot Price around args.spot at T=0. Default: 0.3.
         - `--seed`: Random Seed. Default: 0.

@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import shutil
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Callable, List, Sequence, Tuple, Union
 
@@ -11,8 +12,10 @@ import numpy as np
 
 SpotPriceType = Tuple[int, float]
 
+BASEPATH_NUM_STEPS = 100000
 
-@dataclass(frozen=True)
+
+@dataclass
 class PathFactoryParams:
     expiry: float
     rate: float
@@ -52,9 +55,8 @@ class SimulationPath:
         self.act_spot_price: float = path[0][1]
         self.num_steps: int = params.num_steps
         assert (
-            len(self._base_path) == self.num_steps + 1,
-            "Path should have same number of steps as the param that generated it",
-        )
+            len(self._base_path) == self.num_steps + 1
+        ), "Path should have same number of steps as the param that generated it"
 
     def get_timed_path(self) -> List[Tuple[float, float]]:
         timed_path = []
@@ -62,6 +64,16 @@ class SimulationPath:
             time = num_steps * self.expiry / self.num_steps
             timed_path.append((time, price))
         return timed_path
+
+    @classmethod
+    def from_filepath(
+        cls,
+        filepath: str,
+        folder_params: PathFactoryParams,
+        new_params: PathFactoryParams,
+    ):
+        path = PriceSimulator.read_path(filepath, folder_params, new_params)
+        return cls(new_params, path)
 
 
 class PriceSimulator:
@@ -87,12 +99,22 @@ class PriceSimulator:
             yield ((step, price))
 
     @classmethod
-    def read_path(self, filepath) -> Sequence[SpotPriceType]:
+    def read_path(
+        self,
+        filepath: str,
+        folder_params: PathFactoryParams,
+        new_params: PathFactoryParams,
+    ) -> Sequence[SpotPriceType]:
         path = []
+        assert (
+            folder_params.num_steps % new_params.num_steps == 0
+        ), "We can only simulate integer multiple of original dt"
+        every_x_steps = folder_params.num_steps // new_params.num_steps
         with open(filepath, "r") as fp:
-            for line in fp:
-                step, price = line.strip().split(",")
-                path.append(((int(step), float(price))))
+            lines = fp.readlines()
+        for line in lines[:1] + lines[every_x_steps::every_x_steps]:
+            step, price = line.strip().split(",")
+            path.append(((int(int(step) / every_x_steps), float(price))))
         return path
 
     def write_path(self, filepath) -> None:
@@ -126,23 +148,29 @@ class PathFactory:
             raise ValueError(f"{folder_path} Already Exists")
 
         price_sim = PriceSimulator(self.params)
+        config_path = self._config_path(folder_path)
+        self.params.to_file(config_path)
+        print(f"Config: Written to {config_path}")
         for path_num in range(self.params.num_paths):
             filepath: str = self._filepath(folder_path, path_num)
             price_sim.write_path(filepath)
+            print(f"Simulation Path {path_num}: Written to {filepath}")
 
-        self.params.to_file(self._config_path(folder_path))
         print(f"{self.params.num_paths} paths written to {folder_path}")
 
     @classmethod
-    def from_folder(cls, folder_path: str) -> PathFactory:
-        params = PathFactoryParams.from_file(cls._config_path(folder_path))
+    def from_folder(cls, folder_path: str, num_steps=None) -> PathFactory:
+        folder_params = PathFactoryParams.from_file(cls._config_path(folder_path))
+        new_params = deepcopy(folder_params)
+        new_params.num_steps = (
+            num_steps if num_steps is not None else folder_params.num_steps
+        )
         all_paths: List[Sequence[SpotPriceType]] = []
-        for path_num in range(params.num_paths):
+        for path_num in range(folder_params.num_paths):
             filepath: str = cls._filepath(folder_path, path_num)
-            path = SimulationPath(params, PriceSimulator.read_path(filepath))
+            path = SimulationPath.from_filepath(filepath, folder_params, new_params)
             all_paths.append(path)
-
-        path_factory = PathFactory(params)
+        path_factory = PathFactory(new_params)
         path_factory.paths = all_paths
         return path_factory
 
@@ -156,12 +184,6 @@ def parse_args():
     parser.add_argument("--vol", type=float, default=0.25, help="Volatility")
     parser.add_argument(
         "--spot_price", type=float, default=100.0, help="Spot Price at T=0"
-    )
-    parser.add_argument(
-        "--num_steps",
-        type=int,
-        default=100,
-        help="Number of Timesteps to Simulate to Expiry",
     )
     parser.add_argument(
         "--num_paths", type=int, default=100, help="Number of Simulation Paths to Run"
@@ -195,7 +217,7 @@ def main(args):
         rate=args.rate,
         vol=args.vol,
         spot_price=args.spot_price,
-        num_steps=args.num_steps,
+        num_steps=BASEPATH_NUM_STEPS,
         spot_price_frac=args.spot_price_frac,
         seed=args.seed,
         num_paths=args.num_paths,
