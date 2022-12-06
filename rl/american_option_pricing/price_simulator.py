@@ -65,6 +65,16 @@ class SimulationPath:
             timed_path.append((time, price))
         return timed_path
 
+    def get_timed_triplet_path(self) -> List[Tuple[float,float,float]]:
+        timed_triplet_path = []
+        timed_path = self.get_timed_path()
+        for idx in range(len(timed_path)-1):
+            num_steps,price = timed_path[idx]
+            time = num_steps * self.expiry / self.num_steps
+            _, next_price = timed_path[idx+1]
+            timed_triplet_path.append((time, price, next_price))
+        return timed_triplet_path
+
     @classmethod
     def from_filepath(
         cls,
