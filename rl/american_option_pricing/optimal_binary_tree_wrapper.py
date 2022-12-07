@@ -47,6 +47,39 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
         return self.spot_price * np.exp((2 * j - i) * self.vol *
                                         np.sqrt(self.dt()))
 
+    def get_step_from_time_to_expiry(self, time_to_expiry: float) -> int:
+        """
+        Get the step (i) from the given time to expiry.
+
+        Say that we have the original expiry as 1 year and are given
+        time_to_expiry as 4 months, the step value (i) would be 
+        1 - 4(months)/12(months) times the number of steps.
+        """
+        return int(self.num_steps * (1 - time_to_expiry / self.expiry))
+
+    def get_state_from_price(self, price: float, step: int) -> int:
+        """
+        Given the price and the time step, find the j'th state.
+        We compute this by finding the prices at that time step (time step i has i+1 prices).
+        We then return the j for which prices[j] is closest to the price.
+        """
+        # Get the prices available at time step "step".
+        prices = [self.state_price(step, j) for j in range(step+1)]
+
+        # Find the price in prices that is closest to the required price
+        min_diff = sys.maxint
+
+        # State is the value of j that is closest in price to the 
+        # required price
+        state = 0
+        for j in range(len(prices)):
+            p = prices[j]
+            if abs(price - p) < min_diff:
+                min_diff = price-p
+                state = j
+
+        return state
+
     def get_opt_vf_and_policy(self) -> \
             Iterator[Tuple[V[int], FiniteDeterministicPolicy[int, bool]]]:
         """
@@ -79,7 +112,24 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
         )
 
     def train(self, simulation_paths: List[SimulationPath] = None) -> None:
+        """
+        Perform the backwards induction to get the optimal value function for all states (i, j)
+        """
         self.vf_seq_best, self.policy_seq_best = zip(*self.get_opt_vf_and_policy())
 
     def predict(self, time_to_expiry: float, price: float) -> float:
-        raise NotImplementedError
+        """
+        Predict the continuation value given the time to expiry and the price
+        """
+        # Get the step (i) from the time to expiry
+        step = self.get_step_from_time_to_expiry(time_to_expiry=time_to_expiry)
+
+        # If it is the last step, return the price because there is no continuation value
+        if step == self.num_steps - 1:
+            return price
+
+        # Get the j corresponding to the price in time step "step"
+        state = self.get_state_from_price(price=price, step=step)
+
+        # Since we want the continuation value, we put NonTerminal(True)
+        return self.vf_seq_best[step][state][NonTerminal(True)]
