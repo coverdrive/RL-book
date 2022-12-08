@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pickle
 from typing import Callable, List, Sequence, Tuple, Union
-
+import numpy as np
 from price_simulator import SimulationPath
 
 
@@ -49,6 +49,29 @@ class AlgoWrapper:
     ) -> List[float]:
         exercise_payoff = self.payoff_func(price)
         return [max(exercise_payoff, self.predict(t, price)) for t in times_to_expiry]
+
+    def put_option_exercise_boundary(
+        self, num_steps: int
+    ) -> Tuple[Sequence[float], Sequence[float]]:
+        
+        x: List[float] = []
+        y: List[float] = []   
+        strike: float = self.strike; expiry: float = self.expiry
+        prices: np.ndarray = np.arange(0., strike + 0.1, 0.1)
+            
+        for step in range(num_steps):
+            t: float = step * expiry / num_steps
+            cp: Sequence[float] = self.continuation_curve(time_to_expiry=expiry-t,prices=prices)
+            ep: Sequence[float] = self.exercise_curve(prices=prices)
+            ll: Sequence[float] = [p for p, c, e in zip(prices, cp, ep) if e > c]
+            if len(ll) > 0:
+                x.append(t)
+                y.append(max(ll))
+        final: Sequence[Tuple[float, float]] = \
+            [(p, self.payoff_func(p)) for p in prices]
+        x.append(expiry)
+        y.append(max(p for p, e in final if e > 0))
+        return x, y
 
     def save_model(self, filepath) -> None:
         with open(filepath, "wb") as fp:
