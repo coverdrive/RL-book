@@ -1,9 +1,10 @@
 import numpy as np
 import sys
 from typing import Callable, Tuple, Iterator, List
-sys.path.append("../", "../../")
+sys.path.append("../")
+sys.path.append("../../")
 
-from american_option_pricing import AlgoWrapper
+from algo_wrapper import AlgoWrapper
 from price_simulator import SimulationPath
 from dynamic_programming import V
 from markov_decision_process import Terminal, NonTerminal
@@ -30,7 +31,7 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
             strike = strike,
             payoff_func = payoff_func
         )
-        self.num_steps = 1000
+        self.num_steps = 100
         self.vf_seq_best = None
         self.policy_seq_best = None
 
@@ -96,7 +97,7 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
                     True: Constant(
                         (
                             Terminal(-1),
-                            self.payoff(self.state_price(i, j))
+                            self.payoff_func(self.state_price(i, j))
                         )
                     ),
                     False: Categorical(
@@ -132,4 +133,32 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
         state = self.get_state_from_price(price=price, step=step)
 
         # Since we want the continuation value, we put NonTerminal(True)
-        return self.vf_seq_best[step][state][NonTerminal(True)]
+        return self.vf_seq_best[step][NonTerminal(state=state)]
+
+def main():
+    spot_price_val: float = 100.0 #100.0
+    strike_val: float = 100.0 #100.0
+    expiry_val: float = 1.0 #1.0
+    rate_val: float = 0.05 #0.05
+    vol_val: float = 0.25 #0.25
+    opt_payoff: Callable[[float],float] = lambda x: max(strike_val - x, 0)
+
+    print("Initialize the OptimalBinaryTreeWrapper")
+    optBinTree = OptimalBinaryTreeWrapper(
+        spot_price=spot_price_val,
+        expiry=expiry_val,
+        rate=rate_val,
+        vol=vol_val,
+        strike=strike_val,
+        payoff_func=opt_payoff
+    )
+
+    print("Training the optimal binary tree")
+    optBinTree.train()
+
+    print("vf_seq_best: ", optBinTree.vf_seq_best[2][NonTerminal(state=1)])
+    # print("Continuation value at step 0: ", optBinTree.vf_seq_best[0][0][NonTerminal(True)])
+
+
+if __name__ == "__main__":
+    main()
