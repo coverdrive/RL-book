@@ -31,7 +31,7 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
             strike = strike,
             payoff_func = payoff_func
         )
-        self.num_steps = 100
+        self.num_steps = 1000
         self.vf_seq_best = None
         self.policy_seq_best = None
 
@@ -65,21 +65,13 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
         We then return the j for which prices[j] is closest to the price.
         """
         # Get the prices available at time step "step".
-        prices = [self.state_price(step, j) for j in range(step+1)]
+        prices = np.asarray([self.state_price(step, j) for j in range(step+1)])
 
-        # Find the price in prices that is closest to the required price
-        min_diff = sys.maxint
+        # Compute the absolute difference between the prices and required price
+        diff = abs(prices - price)
 
-        # State is the value of j that is closest in price to the 
-        # required price
-        state = 0
-        for j in range(len(prices)):
-            p = prices[j]
-            if abs(price - p) < min_diff:
-                min_diff = price-p
-                state = j
-
-        return state
+        # The state we want is the closest to the required price
+        return np.argmin(diff)
 
     def get_opt_vf_and_policy(self) -> \
             Iterator[Tuple[V[int], FiniteDeterministicPolicy[int, bool]]]:
@@ -156,9 +148,12 @@ def main():
     print("Training the optimal binary tree")
     optBinTree.train()
 
-    print("vf_seq_best: ", optBinTree.vf_seq_best[2][NonTerminal(state=1)])
-    # print("Continuation value at step 0: ", optBinTree.vf_seq_best[0][0][NonTerminal(True)])
+    print("vf_seq_best[0][NonTerminal(state=0)]: ", optBinTree.vf_seq_best[0][NonTerminal(state=0)])
 
+    time_to_expiry = 0.5
+    price = 100.0
+    prediction = optBinTree.predict(time_to_expiry=time_to_expiry, price=price)
+    print("Prediction value with time_to_expiry: ", time_to_expiry, " and price: ", price, " is: ", prediction)
 
 if __name__ == "__main__":
     main()
