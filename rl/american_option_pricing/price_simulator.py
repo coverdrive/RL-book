@@ -12,7 +12,7 @@ import numpy as np
 
 SpotPriceType = Tuple[int, float]
 
-BASEPATH_NUM_STEPS = 100000
+BASEPATH_NUM_STEPS = 10000
 
 
 @dataclass
@@ -74,6 +74,16 @@ class SimulationPath:
             _, next_price = timed_path[idx+1]
             timed_triplet_path.append((time, price, next_price))
         return timed_triplet_path
+
+    def get_transitions(self) -> List[Tuple[float, float]]:
+        transitions = []
+        for bp1, bp2 in zip(self._base_path[:-1], self._base_path[1:]):
+            num_steps1, price1 = bp1
+            num_steps2, price2 = bp2
+            time1 = num_steps1 * self.expiry / self.num_steps
+            time2 = num_steps2 * self.expiry / self.num_steps
+            transitions.append((time1, price1, time2, price2))
+        return transitions
 
     @classmethod
     def from_filepath(

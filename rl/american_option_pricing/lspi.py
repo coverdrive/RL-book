@@ -1,15 +1,15 @@
+import sys
 from typing import Callable, List, Sequence, Tuple, Union
+
+import numpy as np
+from numpy.polynomial.laguerre import lagval
 
 from algo_wrapper import AlgoWrapper
 from price_simulator import SimulationPath
 
-from numpy.polynomial.laguerre import lagval
-import numpy as np
+sys.path.extend(["../", "../../"])
 
-import sys
-sys.path.append("C://Users//jtuli//Desktop//TJHA//@Stanford//CS 229//FINAL PROJECT CODE//lspi_new_interface//RL-book")
-from rl.function_approx import LinearFunctionApprox, Weights, FunctionApprox
-
+from rl.function_approx import FunctionApprox, LinearFunctionApprox, Weights
 
 TrainingDataType = Tuple[int, float, float]
 

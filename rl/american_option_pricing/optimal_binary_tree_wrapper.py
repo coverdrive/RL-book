@@ -20,6 +20,7 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
         rate: float,
         vol: float,
         strike: float,
+        num_steps: int,
         payoff_func: Callable[[float], float],
     ) -> None:
         AlgoWrapper.__init__(
@@ -29,24 +30,19 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
             rate = rate,
             vol = vol,
             strike = strike,
-            payoff_func = payoff_func
+            num_steps = num_steps,
+            payoff_func = payoff_func,
         )
-        self.num_steps = 1000
         self.vf_seq_best = None
         self.policy_seq_best = None
 
-    def dt(self) -> float:
-        """
-        Get the time interval size used for discretization 
-        """
-        return self.expiry / self.num_steps
 
     def state_price(self, i: int, j: int) -> float:
         """
         Get the price associated with state j of time step i.
         """
         return self.spot_price * np.exp((2 * j - i) * self.vol *
-                                        np.sqrt(self.dt()))
+                                        np.sqrt(self.dt))
 
     def get_step_from_time_to_expiry(self, time_to_expiry: float) -> int:
         """
@@ -78,7 +74,7 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
         """
         Compute the optimal value functions and optimal policies for each time step by backward induction.
         """
-        dt: float = self.dt()
+        dt: float = self.dt
         up_factor: float = np.exp(self.vol * np.sqrt(dt))
         up_prob: float = (np.exp(self.rate * dt) * up_factor - 1) / \
             (up_factor * up_factor - 1)
@@ -118,8 +114,8 @@ class OptimalBinaryTreeWrapper(AlgoWrapper):
         step = self.get_step_from_time_to_expiry(time_to_expiry=time_to_expiry)
 
         # If it is the last step, return the price because there is no continuation value
-        if step == self.num_steps - 1:
-            return price
+        if step == self.num_steps:
+            return self.payoff_func(price)
 
         # Get the j corresponding to the price in time step "step"
         state = self.get_state_from_price(price=price, step=step)

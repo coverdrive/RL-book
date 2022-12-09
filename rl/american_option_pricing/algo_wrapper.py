@@ -14,6 +14,7 @@ class AlgoWrapper:
         rate: float,
         vol: float,
         strike: float,
+        num_steps: int,
         payoff_func: Callable[[float], float],
     ) -> None:
         self.spot_price = spot_price
@@ -21,7 +22,15 @@ class AlgoWrapper:
         self.rate = rate
         self.vol = vol
         self.strike = strike
+        self.num_steps = num_steps
         self.payoff_func = payoff_func
+
+    @property
+    def dt(self) -> float:
+        """
+        Get the time interval size used for discretization
+        """
+        return self.expiry / self.num_steps
 
     def train(self, simulation_paths: List[SimulationPath]) -> None:
         raise NotImplementedError
