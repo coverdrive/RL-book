@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import sys
 from typing import Callable, Tuple, Iterator, List
@@ -129,27 +130,50 @@ def main():
     expiry_val: float = 1.0 #1.0
     rate_val: float = 0.05 #0.05
     vol_val: float = 0.25 #0.25
+    num_steps: int = 200
     opt_payoff: Callable[[float],float] = lambda x: max(strike_val - x, 0)
 
-    print("Initialize the OptimalBinaryTreeWrapper")
-    optBinTree = OptimalBinaryTreeWrapper(
-        spot_price=spot_price_val,
-        expiry=expiry_val,
-        rate=rate_val,
-        vol=vol_val,
-        strike=strike_val,
-        payoff_func=opt_payoff
-    )
+    steps = [10, 50, 100, 200, 500, 1000]
+    # steps = [10, 50]
 
-    print("Training the optimal binary tree")
-    optBinTree.train()
+    for step in steps:
 
-    print("vf_seq_best[0][NonTerminal(state=0)]: ", optBinTree.vf_seq_best[0][NonTerminal(state=0)])
+        print("Initialize the OptimalBinaryTreeWrapper")
+        optBinTree = OptimalBinaryTreeWrapper(
+            spot_price=spot_price_val,
+            expiry=expiry_val,
+            rate=rate_val,
+            vol=vol_val,
+            strike=strike_val,
+            num_steps=step,
+            payoff_func=opt_payoff
+        )
 
-    time_to_expiry = 0.5
-    price = 100.0
-    prediction = optBinTree.predict(time_to_expiry=time_to_expiry, price=price)
-    print("Prediction value with time_to_expiry: ", time_to_expiry, " and price: ", price, " is: ", prediction)
+        print("Training the optimal binary tree")
+        optBinTree.train()
+
+        print("vf_seq_best[0][NonTerminal(state=0)]: ", optBinTree.vf_seq_best[0][NonTerminal(state=0)])
+
+        time_to_expiry = 0.5
+        price = 100.0
+        prediction = optBinTree.predict(time_to_expiry=time_to_expiry, price=price)
+        print("Prediction value with time_to_expiry: ", time_to_expiry, " and price: ", price, " is: ", prediction)
+
+        print("Exercise boundary:")
+        x, y = optBinTree.put_option_exercise_boundary(optBinTree.num_steps)
+        label = "num steps = " + str(step)
+        plt.plot(x, y, label=label)
+
+    font = {'family': 'Trebuchet MS',
+        'color':  'darkblue',
+        'weight': 'normal',
+        'size': 12,
+        }
+    plt.xlabel("Time Steps (fraction of expiry)", fontdict=font)
+    plt.ylabel("Option Exercise price boundary (in $)", fontdict=font)
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 if __name__ == "__main__":
     main()
