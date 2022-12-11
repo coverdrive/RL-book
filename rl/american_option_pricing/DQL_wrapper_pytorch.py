@@ -119,12 +119,13 @@ class DQL_P(AlgoWrapper):
                 rate: float,
                 vol: float,
                 strike: float,
+                num_steps:float,
                 payoff_func: Callable[[float], float],
                 aug_weight=1
                 ):
         
         # setup standard environment parameters
-        AlgoWrapper.__init__(self,spot_price,expiry,rate,vol,strike,payoff_func)
+        AlgoWrapper.__init__(self,spot_price,expiry,rate,vol,strike,num_steps,payoff_func)
         
         # setup DQL
         self.dqn = DQN(layers=[6,1],strike=strike,expiry=expiry)
