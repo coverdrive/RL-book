@@ -1,4 +1,5 @@
 import sys
+import time
 from typing import Callable, List, Sequence, Tuple, Union
 
 import numpy as np
@@ -7,13 +8,16 @@ from numpy.polynomial.laguerre import lagval
 from algo_wrapper import AlgoWrapper
 from price_simulator import SimulationPath
 
-sys.path.extend(["../", "../../"])
+import sys
+#sys.path.append("C://Users//jtuli//Desktop//TJHA//@Stanford//CS 229//FINAL PROJECT CODE//lspi_new_interface//RL-book//rl")
+#from rl.function_approx import FunctionApprox, LinearFunctionApprox, Weights
+#from function_approx import FunctionApprox, LinearFunctionApprox, Weights
 
 from rl.function_approx import FunctionApprox, LinearFunctionApprox, Weights
 
 TrainingDataType = Tuple[int, float, float]
 
-
+"""
 def training_sim_data(
     expiry: float,
     num_steps: int,
@@ -87,7 +91,7 @@ def option_price(
                 step = num_steps + 1
 
     return np.average(prices)
-
+"""
 
 class LSPI(AlgoWrapper):
     def __init__(
@@ -126,6 +130,16 @@ class LSPI(AlgoWrapper):
             lambda t_s: (t_s[ 0 ] / self.expiry) ** 2
         ]
 
+        print("LOADING TRAIN DATA")
+        since = time.time()
+        training_data = [ ]
+        for simulation_path in simulation_paths:
+            training_data.extend(simulation_path.get_timed_triplet_path())
+        loading_time = time.time() - since
+        print(f"TIME TAKEN TO LOAD : {loading_time:.3f}")
+        since = time.time()
+
+        """
         training_data: Sequence[ TrainingDataType ] = training_sim_data(
             expiry=self.expiry,
             num_steps=self.num_steps,
@@ -135,6 +149,7 @@ class LSPI(AlgoWrapper):
             rate=self.rate,
             vol=self.vol
         )
+        """
 
         dt: float = self.expiry / self.num_steps
         gamma: float = np.exp(-self.rate * dt)
@@ -153,6 +168,10 @@ class LSPI(AlgoWrapper):
         exer: np.ndarray = np.array([ max(self.strike - s1, 0)
                                       for _, s1 in next_states ])
         wts: np.ndarray = np.zeros(num_features)
+
+        print("STARTING TRAINING")
+        print(f"LENGTH OF TRAINING DATA :{len(training_data)}")
+
         for _ in range(self.training_iters):
             a_inv: np.ndarray = np.eye(num_features) / epsilon
             b_vec: np.ndarray = np.zeros(num_features)
@@ -172,8 +191,15 @@ class LSPI(AlgoWrapper):
             weights=Weights.create(wts)
         )
 
+        training_time = time.time() - since
+        print(f"TIME TAKEN TO TRAIN : {training_time:.3f}")
+
+
     def predict(self, time_to_expiry: float, price: float) -> float:
 
+        return self.trained_model.evaluate([ (self.expiry - time_to_expiry, price) ])[ 0 ]
+
+        """
         num_scoring_paths: int = 10000
         num_steps_scoring: int = 100
 
@@ -195,3 +221,10 @@ class LSPI(AlgoWrapper):
         )
 
         return lspi_opt_price
+        """
+
+    def save_model(self, save_path: str):
+        pass
+
+    def load_model(self, load_path: str):
+        pass
