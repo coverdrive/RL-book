@@ -9,7 +9,7 @@ from algo_wrapper import AlgoWrapper
 from price_simulator import SimulationPath
 
 import sys
-#sys.path.append("C://Users//jtuli//Desktop//TJHA//@Stanford//CS 229//FINAL PROJECT CODE//lspi_new_interface//RL-book//rl")
+sys.path.append("C://Users//jtuli//Desktop//TJHA//@Stanford//CS 229//FINAL PROJECT CODE//lspi_new_interface//RL-book")
 #from rl.function_approx import FunctionApprox, LinearFunctionApprox, Weights
 #from function_approx import FunctionApprox, LinearFunctionApprox, Weights
 
@@ -17,103 +17,21 @@ from rl.function_approx import FunctionApprox, LinearFunctionApprox, Weights
 
 TrainingDataType = Tuple[int, float, float]
 
-"""
-def training_sim_data(
-    expiry: float,
-    num_steps: int,
-    num_paths: int,
-    spot_price: float,
-    spot_price_frac: float,
-    rate: float,
-    vol: float
-) -> Sequence[TrainingDataType]:
-    ret: List[TrainingDataType] = []
-    dt: float = expiry / num_steps
-    spot: float = spot_price
-    vol2: float = vol * vol
-
-    mean2: float = spot * spot
-    var: float = mean2 * spot_price_frac * spot_price_frac
-    log_mean: float = np.log(mean2 / np.sqrt(var + mean2))
-    log_stdev: float = np.sqrt(np.log(var / mean2 + 1))
-
-    for _ in range(num_paths):
-        price: float = np.random.lognormal(log_mean, log_stdev)
-        for step in range(num_steps):
-            m: float = np.log(price) + (rate - vol2 / 2) * dt
-            v: float = vol2 * dt
-            next_price: float = np.exp(np.random.normal(m, np.sqrt(v)))
-            ret.append((step, price, next_price))
-            price = next_price
-    return ret
-
-def scoring_sim_data(
-    expiry: float,
-    num_steps: int,
-    num_paths: int,
-    spot_price: float,
-    rate: float,
-    vol: float
-) -> np.ndarray:
-    paths: np.ndarray = np.empty([num_paths, num_steps + 1])
-    dt: float = expiry / num_steps
-    vol2: float = vol * vol
-    for i in range(num_paths):
-        paths[i, 0] = spot_price
-        for step in range(num_steps):
-            m: float = np.log(paths[i, step]) + (rate - vol2 / 2) * dt
-            v: float = vol2 * dt
-            paths[i, step + 1] = np.exp(np.random.normal(m, np.sqrt(v)))
-    return paths
-
-def option_price(
-    scoring_data: np.ndarray,
-    func: FunctionApprox[Tuple[float, float]],
-    expiry: float,
-    rate: float,
-    strike: float
-) -> float:
-    num_paths: int = scoring_data.shape[0]
-    num_steps: int = scoring_data.shape[1] - 1
-    prices: np.ndarray = np.zeros(num_paths)
-    dt: float = expiry / num_steps
-
-    for i, path in enumerate(scoring_data):
-        step: int = 0
-        while step <= num_steps:
-            t: float = step * dt
-            exercise_price: float = max(strike - path[step], 0)
-            continue_price: float = func.evaluate([(t, path[step])])[0] \
-                if step < num_steps else 0.
-            step += 1
-            if exercise_price >= continue_price:
-                prices[i] = np.exp(-rate * t) * exercise_price
-                step = num_steps + 1
-
-    return np.average(prices)
-"""
 
 class LSPI(AlgoWrapper):
     def __init__(
             self,
             spot_price: float,
-            spot_price_frac: float,
-            num_steps: int,
-            num_paths: int,
             expiry: float,
             rate: float,
             vol: float,
             strike: float,
-            training_iters: int,
-            payoff_func: Callable[ [ float ], float ],
-    ) -> None:
-        AlgoWrapper.__init__(self, spot_price, expiry, rate, vol, strike, payoff_func)
-        self.num_steps = num_steps
-        self.num_paths = num_paths
-        self.spot_price_frac = spot_price_frac
-        self.training_iters = training_iters
-
+            num_steps: int,
+            payoff_func: Callable[ [ float ], float ]) -> None:
+        AlgoWrapper.__init__(self, spot_price, expiry, rate, vol, strike, num_steps, payoff_func)
+        self.training_iters = 20
         self.trained_model = None
+
 
     def train(self, simulation_paths: List[ SimulationPath ]) -> None:
         num_laguerre: int = 4
@@ -138,18 +56,6 @@ class LSPI(AlgoWrapper):
         loading_time = time.time() - since
         print(f"TIME TAKEN TO LOAD : {loading_time:.3f}")
         since = time.time()
-
-        """
-        training_data: Sequence[ TrainingDataType ] = training_sim_data(
-            expiry=self.expiry,
-            num_steps=self.num_steps,
-            num_paths=self.num_paths,
-            spot_price=self.spot_price,
-            spot_price_frac=self.spot_price_frac,
-            rate=self.rate,
-            vol=self.vol
-        )
-        """
 
         dt: float = self.expiry / self.num_steps
         gamma: float = np.exp(-self.rate * dt)
@@ -194,34 +100,8 @@ class LSPI(AlgoWrapper):
         training_time = time.time() - since
         print(f"TIME TAKEN TO TRAIN : {training_time:.3f}")
 
-
     def predict(self, time_to_expiry: float, price: float) -> float:
-
         return self.trained_model.evaluate([ (self.expiry - time_to_expiry, price) ])[ 0 ]
-
-        """
-        num_scoring_paths: int = 10000
-        num_steps_scoring: int = 100
-
-        scoring_data: np.ndarray = scoring_sim_data(
-            expiry=time_to_expiry,
-            num_steps=num_steps_scoring,
-            num_paths=num_scoring_paths,
-            spot_price=price,
-            rate=self.rate,
-            vol=self.vol
-        )
-
-        lspi_opt_price: float = option_price(
-            scoring_data=scoring_data,
-            func=self.trained_model,
-            expiry=self.expiry,
-            rate=self.rate,
-            strike=self.strike,
-        )
-
-        return lspi_opt_price
-        """
 
     def save_model(self, save_path: str):
         pass
